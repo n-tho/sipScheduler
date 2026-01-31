@@ -1,0 +1,39 @@
+# --- ignore everything by default ---
+*
+
+# allow directories (needed so whitelist paths can be reached)
+!*/
+
+# --- keep root meta ---
+!.gitignore
+!README.md
+!LICENSE
+
+# --- keep solution / vcxproj ---
+!sipScheduler.sln
+!sipScheduler/
+!sipScheduler/sipScheduler.vcxproj
+
+# --- keep build scripts/makefiles ---
+!sipScheduler/build.ps1
+!sipScheduler/build-release.bat
+!sipScheduler/sipScheduler.mak
+
+# --- keep only the app folder contents ---
+!sipScheduler/sipScheduler/
+!sipScheduler/sipScheduler/**
+
+# --- ignore generated / sdk template stuff ---
+sipScheduler/bin/
+sipScheduler/obj/
+sipScheduler/common/
+sipScheduler/exe/
+sipScheduler/doc/
+sipScheduler/jse/
+sipScheduler/sdk/
+sipScheduler/.vs/
+sipScheduler/web1/
+sipScheduler/x86*/
+sipScheduler/x86_64*/
+sipScheduler/x86_64-debug*/
+.vs/

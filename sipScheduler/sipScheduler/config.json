@@ -1,0 +1,105 @@
+{
+    "javascript": {
+        "eval": [
+            "nilstho-sipschedulerservice.js"
+        ]
+    },
+    "database": {
+        "init": [{
+            "cmd": "table",
+            "name": "sip_scheduler_state",
+            "init": [{
+                    "cmd": "column",
+                    "name": "id",
+                    "type": "INTEGER PRIMARY KEY"
+                },
+                {
+                    "cmd": "column",
+                    "name": "active",
+                    "type": "BOOLEAN"
+                },
+                {
+                    "cmd": "column",
+                    "name": "mac",
+                    "type": "TEXT"
+                },
+                {
+                    "cmd": "column",
+                    "name": "sip_list",
+                    "type": "TEXT"
+                },
+                {
+                    "cmd": "column",
+                    "name": "prev_disabled",
+                    "type": "TEXT"
+                },
+                {
+                    "cmd": "column",
+                    "name": "until_ms",
+                    "type": "BIGINT"
+                }
+            ]
+        }]
+    },
+    "config": {
+        "init": [{
+                "cmd": "item",
+                "name": "pbxmacaddress",
+                "type": "STRING",
+                "default": "009033FFFE00",
+                "password": false
+            },
+            {
+                "cmd": "item",
+                "name": "domain",
+                "type": "STRING",
+                "default": "example.com",
+                "password": false
+            },
+            {
+                "cmd": "item",
+                "name": "pbxname",
+                "type": "STRING",
+                "default": "master",
+                "password": false
+            },
+            {
+                "cmd": "item",
+                "name": "run_at",
+                "type": "STRING",
+                "default": "00:00",
+                "password": false
+            },
+            {
+                "cmd": "item",
+                "name": "enabled",
+                "type": "BOOL",
+                "default": true
+            },
+            {
+                "cmd": "item",
+                "name": "sip_mask",
+                "type": "INT",
+                "default": 1
+            },
+            {
+                "cmd": "item",
+                "name": "tz_offset_minutes",
+                "type": "INT",
+                "default": 60
+            },
+            {
+                "cmd": "item",
+                "name": "re_register",
+                "type": "INT",
+                "default": 5
+            },
+            {
+                "cmd": "mode",
+                "name": "pbx-manager",
+                "read": true,
+                "write": true
+            }
+        ]
+    }
+}

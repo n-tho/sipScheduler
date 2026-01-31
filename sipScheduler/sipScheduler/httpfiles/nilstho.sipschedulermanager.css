@@ -1,0 +1,95 @@
+
+div.nilstho-sipscheduler-panel {
+    position:absolute;
+    left:0px;
+    right:0px;
+    top:0px;
+    bottom:0px;
+    color:var(--nilstho-sipscheduler-item-text);
+    font-size:14px;
+}
+
+div.nilstho-sipscheduler-obj {
+    position:relative;
+    margin:10px;
+    padding:5px;
+    background-color:var(--nilstho-sipscheduler-item);
+    color:var(--nilstho-sipscheduler-item-text);
+    font-size:14px;
+}
+
+div.nilstho-sipscheduler-header {
+    position:relative;
+    display:flex;
+    flex-wrap:wrap;
+}
+
+div.nilstho-sipscheduler-label {
+    position:relative;
+    margin:5px 10px;
+    color:var(--nilstho-sipscheduler-c2);
+}
+
+div.nilstho-sipscheduler-label2 {
+    position:relative;
+    width:100px;
+    margin:5px 10px;
+    font-size: 15px;
+    text-align: left;
+    color: var(--innovaphone-sipScheduler-item-text);
+}
+
+div.nilstho-sipscheduler-value {
+    position:relative;
+    margin:5px 0px;
+    /*background-color:var(--nilstho-sipscheduler-input);*/
+    color:var(--nilstho-sipscheduler-input-text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+div.nilstho-sipscheduler-appicon {
+    background-size: cover;
+    position: absolute;
+    height: 50px;
+    left: 0px;
+    top: 0px;
+    width: 50px;
+}
+
+div.nilstho-sipscheduler-button {
+    position:absolute;
+    width:120px;
+    height:25px;
+    background-color:var(--nilstho-sipscheduler-button);
+    color:var(--nilstho-sipscheduler-button-text);
+    text-align:center;
+    cursor:pointer;
+}
+
+input.nilstho-sipscheduler-input {
+    width:100%;
+    box-sizing:border-box;
+    border:none;
+    margin:5px 0px;
+    padding: 5px 10px;
+    background-color:var(--nilstho-sipscheduler-input);
+    color:var(--nilstho-sipscheduler-input-text);
+}
+
+div.nilstho-sipscheduler-choice {
+    box-sizing: border-box;
+    position:relative;
+    width:120px;
+    height:30px;
+    text-align:center;
+    background-color:var(--nilstho-sipscheduler-button-bg);
+    margin:10px;
+    padding: 5px;
+}
+
+div.nilstho-sipscheduler-choice:hover {
+    background-color:var(--nilstho-sipscheduler-highlight-bg);
+}
+

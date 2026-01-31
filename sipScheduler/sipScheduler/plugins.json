@@ -1,0 +1,10 @@
+{
+    "plugins": [
+        {
+            "js": "nilstho.sipschedulermanager",
+            "icon": "nilstho-sipscheduler.png",
+            "lang": "nilstho.sipschedulermanagertexts",
+            "domains": false
+        }
+    ]
+}
