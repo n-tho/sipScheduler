@@ -1,7 +1,5 @@
 # --- ignore everything by default ---
 *
-
-# allow directories (needed so whitelist paths can be reached)
 !*/
 
 # --- keep root meta ---
