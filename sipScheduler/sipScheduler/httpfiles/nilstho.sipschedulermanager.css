@@ -101,3 +101,7 @@ div.nilstho-sipscheduler-choice:hover {
 select.nilstho-sipscheduler-input {
     line-height: 20px;
 }
+.nilstho-sipscheduler-input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.9;
+}
