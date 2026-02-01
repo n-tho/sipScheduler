@@ -93,3 +93,11 @@ div.nilstho-sipscheduler-choice:hover {
     background-color:var(--nilstho-sipscheduler-highlight-bg);
 }
 
+.nilstho-sipscheduler-input {
+    height: 34px;
+    box-sizing: border-box;
+    padding: 6px 8px;
+}
+select.nilstho-sipscheduler-input {
+    line-height: 20px;
+}
