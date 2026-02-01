@@ -106,6 +106,34 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         console.log("instanceMessage", msg);
     }
 
+    // validation helpers
+    function trimStr(s) { return String(s || "").replace(/^\s+|\s+$/g, ""); }
+    function isEmpty(s) { return trimStr(s) === ""; }
+    function isValidTime(s) { return /^\d{2}:\d{2}$/.test(trimStr(s)); }
+
+    function markRequiredField(field, isValid) {
+        if (field && field.setError) {
+            field.setError(!isValid);
+        }
+        return !!isValid;
+    }
+
+    function validateRequiredField(fields) {
+        var allValid = true;
+
+        for (var i = 0; i < fields.length; i++) {
+            var f = fields[i];
+            var v = (typeof f.value === "function") ? f.value() : f.value;
+            var ok;
+            if (typeof f.validator === "function") ok = !!f.validator(v);
+            else ok = !isEmpty(v);
+
+            if (!markRequiredField(f.field, ok)) allValid = false;
+        }
+        return allValid;
+    }
+
+
     function maskToChecks(mask) {
         mask = (mask | 0) >>> 0;
         for (var i = 1; i <= 16; i++) {
@@ -200,7 +228,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         if (textValues.run_at) textValues.run_at.setValue(configItems.run_at || "00:00");
         if (textValues.pbxmacaddress) textValues.pbxmacaddress.setValue(configItems.pbxmacaddress || "");
         if (textValues.enabled) textValues.enabled.setValue(!!configItems.enabled);
-        if (textValues.domain) textValues.domain.setValue(configItems.domain || "");
+        if (textValues.domain) textValues.domain.setValue(configItems.domain || app.domain || "");
         if (textValues.sipChecks) {
             maskToChecks(configItems.sip_mask || 0);
         }
@@ -268,15 +296,29 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     }
 
     function onSaveSettings() {
+        // Required fields
+        var valid = validateRequiredField([
+            { field: textValues.pbxmacaddress, value: function () { return textValues.pbxmacaddress.getValue(); } },
+            { field: textValues.pbxname, value: function () { return textValues.pbxname.getValue(); } },
+            { field: textValues.domain, value: function () { return textValues.domain.getValue(); } },
+            { field: textValues.run_at, value: function () { return textValues.run_at.getValue(); }, validator: isValidTime }
+        ]);
+
+        if (!valid) {
+            console.warn("Settings validation failed");
+            return;
+        }
+
         configItems.enabled = textValues.enabled ? textValues.enabled.getValue() : false;
         configItems.pbxmacaddress = textValues.pbxmacaddress.getValue();
         configItems.pbxname = textValues.pbxname.getValue();
         configItems.domain = textValues.domain ? textValues.domain.getValue() : "";
         configItems.run_at = textValues.run_at.getValue();
+        configItems.pbxname = trimStr(textValues.pbxname.getValue());
+        configItems.domain = trimStr(textValues.domain ? textValues.domain.getValue() : "");
+        configItems.run_at = trimStr(textValues.run_at.getValue());
         configItems.re_register = parseInt(textValues.re_register.getValue()) || 5;
         configItems.sip_mask = checksToMask();
-
-
 
         configItems.save();
     }
@@ -380,6 +422,17 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
 
 
         function onok() {
+            // Required fields for app object
+            var ok = validateRequired([
+                { name: "title", field: title, value: function () { return title.getValue(); } },
+                { name: "sip", field: sip, value: function () { return sip.getValue(); } },
+                { name: "devices_apps", field: devicesApps, value: function () { return devicesApps.getValue(); } }
+            ]);
+            if (!ok) {
+                console.warn("[SM] app validation failed");
+                return;
+            }
+
             var src = new app.Src(result);
             var pwd = innovaphone.Manager.randomPwd(16);
             tmpSelected = [];
@@ -387,7 +440,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
                 if (tmp[i].getValue()) tmpSelected[tmpSelected.length] = tmp[i].getLabel();
             }
             var appObj = { url: item.httpsUri.slice(0, item.httpsUri.lastIndexOf("/")) + typeUrl[obj.type] };
-            var appsStr = normalizeApps(devicesApps.getValue());
+            var appsStr = normalizeApps(trimStr(devicesApps.getValue()));
             for (var key in typeCheckmarks[obj.type]) appObj[key] = typeCheckmarks[obj.type][key];
             var msg = {
                 mt: "UpdateObject",
@@ -395,9 +448,9 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
                 hide: true,
                 critical: true,
                 copyPwd: copyPwd,
-                cn: title.getValue(),
+                cn: trimStr(title.getValue()),
                 guid: obj.guid,
-                h323: sip.getValue(),
+                h323: trimStr(sip.getValue()),
                 pwd: pwd,
                 pseudo: { type: "app", app: appObj }
             };
@@ -460,6 +513,18 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         }
     }
     EditsipScheduler.prototype = innovaphone.ui1.nodePrototype;
+    function setFieldErrorStyle(el, on) {
+        if (!el) return;
+
+        if (on) {
+            el.style.border = "1px solid #e53935";
+            el.style.backgroundColor = "#fdecea";
+        }
+        else {
+            el.style.border = "";
+            el.style.backgroundColor = "";
+        }
+    }
 
     function Text(label, text, width, lwidth) {
         this.createNode("div", "position:relative; display:flex");
@@ -474,11 +539,12 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         var label = this.add(new innovaphone.ui1.Div(null, null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
         var inputDiv = this.add(new innovaphone.ui1.Div("position:relative; width:" + width + "px"));
         var input = inputDiv.add(new innovaphone.ui1.Input(null, text, null, 100, null, "nilstho-sipscheduler-input"));
+        input.container.oninput = function () { setFieldErrorStyle(input.container, false); };
 
         this.getValue = function () { return input.getValue(); };
         this.setValue = function (value) { input.setValue(value); };
         this.testId = function (id) { input.testId(id); return this; };
-        this.setError = function (on) { input.container.style.border = (on ? "1px solid red" : null); };
+        this.setError = function (on) { setFieldErrorStyle(input.container, on); };
     }
     ConfigText.prototype = innovaphone.ui1.nodePrototype;
     function ConfigText2(label, text, width) {
@@ -486,11 +552,12 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         var label = this.add(new innovaphone.ui1.Div("width:250px; flex-shrink:0;", null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
         var inputDiv = this.add(new innovaphone.ui1.Div("position:relative; width:" + width + "px"));
         var input = inputDiv.add(new innovaphone.ui1.Input(null, text, null, 100, null, "nilstho-sipscheduler-input"));
+        input.container.oninput = function () { setFieldErrorStyle(input.container, false); };
 
         this.getValue = function () { return input.getValue(); };
         this.setValue = function (value) { input.setValue(value); };
         this.testId = function (id) { input.testId(id); return this; };
-        this.setError = function (on) { input.container.style.border = (on ? "1px solid red" : null); };
+        this.setError = function (on) { setFieldErrorStyle(input.container, on); };
         this.setAttribute = function (name, value) { input.container.setAttribute(name, value); };
         this.input = input;
     }
@@ -501,11 +568,12 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         var label = this.add(new innovaphone.ui1.Div("width:250px; flex-shrink:0;", null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
         var inputDiv = this.add(new innovaphone.ui1.Div("position:relative; width:" + width + "px"));
         var input = inputDiv.add(new innovaphone.ui1.Input(null, text, null, 100, "time", "nilstho-sipscheduler-input"));
+        input.container.oninput = function () { setFieldErrorStyle(input.container, false); };
 
         this.getValue = function () { return input.getValue(); };
         this.setValue = function (value) { input.setValue(value); };
         this.testId = function (id) { input.testId(id); return this; };
-        this.setError = function (on) { input.container.style.border = (on ? "1px solid red" : null); };
+        this.setError = function (on) { setFieldErrorStyle(input.container, on); };
     }
 
     ConfigTime.prototype = innovaphone.ui1.nodePrototype;
@@ -519,12 +587,12 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         input.container.max = 60;
         input.container.step = 1;
         input.container.placeholder = "0-60";
-
+        input.container.oninput = function () { setFieldErrorStyle(input.container, false); };
 
         this.getValue = function () { return input.getValue(); };
         this.setValue = function (value) { input.setValue(value); };
         this.testId = function (id) { input.testId(id); return this; };
-        this.setError = function (on) { input.container.style.border = (on ? "1px solid red" : null); };
+        this.setError = function (on) { setFieldErrorStyle(input.container, on); };
     }
     ConfigNumber.prototype = innovaphone.ui1.nodePrototype;
 
@@ -538,7 +606,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         this.setValue = function (value) { checkbox.setValue(value); };
         this.getLabel = function () { return label.container.innerText; };
         this.testId = function (id) { checkbox.testId(id); return this; };
-        this.setError = function (on) { label.container.style.border = (on ? "1px solid red" : null); };
+        this.setError = function (on) { setFieldErrorStyle(input.container, on); };
     }
     ConfigTemplate.prototype = innovaphone.ui1.nodePrototype;
 

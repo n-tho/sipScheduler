@@ -58,7 +58,7 @@
                 "cmd": "item",
                 "name": "domain",
                 "type": "STRING",
-                "default": "example.com",
+                "default": "",
                 "password": false
             },
             {
