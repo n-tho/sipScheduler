@@ -4,7 +4,7 @@ set PROJECT=sipScheduler
 
 set BUILD=10000
 set RELEASE_STATE=sr1
-set MANUF=nilstho
+set MANUF=Nils Thomsen
 
 if not [%1]==[] (set BUILD=%1)
 if not [%2]==[] (set RELEASE_STATE=%2)
