@@ -56,7 +56,6 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     var typeCheckmarks = [
         { web: false, websocket: true, hidden: true, pbx: false, pbxsignal: false, epsignal: false, messages: false, tableusers: false, admin: true, services: true, rcc: false }
     ];
-
     var copyPwd = null;
     var managerApi = start.consumeApi("com.innovaphone.manager");
 
@@ -238,9 +237,11 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         textValues.pbxmacaddress = pbxmacaddress;
 
         var pbxname = content.add(new ConfigText2("pbxname", "", 200)).testId("nilstho-sipscheduler-settings-pbxname");
+        pbxname.setAttribute("placeholder", "master");
         textValues.pbxname = pbxname;
 
         var domain = content.add(new ConfigText2("domain", "", 200)).testId("nilstho-sipscheduler-settings-domain");
+        domain.setAttribute("placeholder", app.domain);
         textValues.domain = domain;
 
         var run_at = content.add(new ConfigTime("run_at", "", 200)).testId("nilstho-sipscheduler-settings-run_at");
@@ -490,6 +491,8 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         this.setValue = function (value) { input.setValue(value); };
         this.testId = function (id) { input.testId(id); return this; };
         this.setError = function (on) { input.container.style.border = (on ? "1px solid red" : null); };
+        this.setAttribute = function (name, value) { input.container.setAttribute(name, value); };
+        this.input = input;
     }
     ConfigText2.prototype = innovaphone.ui1.nodePrototype;
 
@@ -504,6 +507,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         this.testId = function (id) { input.testId(id); return this; };
         this.setError = function (on) { input.container.style.border = (on ? "1px solid red" : null); };
     }
+
     ConfigTime.prototype = innovaphone.ui1.nodePrototype;
 
     function ConfigNumber(label, text, width) {
@@ -554,6 +558,6 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         this.setDisabled = function (dis) { checkbox.setDisabled(!!dis); };
     }
     ConfigCheckbox.prototype = innovaphone.ui1.nodePrototype;
-}
 
+}
 plugin.nilstho.sipschedulermanager.prototype = innovaphone.ui1.nodePrototype;

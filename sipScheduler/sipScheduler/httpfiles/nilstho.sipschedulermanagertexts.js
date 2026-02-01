@@ -2,9 +2,8 @@
 var nilstho = nilstho || {};
 nilstho.sipschedulermanagertexts = {
     en: {
-        pluginTitle: "sipScheduler",
-        sipscheduler: "sipScheduler",
-        sipscheduleradmin: "sipScheduler Admin",
+        pluginTitle: "SIP Scheduler",
+        sipscheduler: "SIP Scheduler",
         title: "Name",
         sip: "SIP",
         url: "URL",
@@ -15,7 +14,7 @@ nilstho.sipschedulermanagertexts = {
         editapp: "Edit the App",
         scheduler_settings: "Scheduler Settings",
         pbxname: "PBX Name",
-        run_at: "Run every day at HH:MM (24h format)",
+        run_at: "Run every day at HH:MM (UTC, 24h format)",
         pbxmacaddress: "PBX MAC Address",
         enabled: "Enable Scheduler",
         domain: "Domain",
@@ -40,9 +39,8 @@ nilstho.sipschedulermanagertexts = {
         devices_apps: "Devices App"
     },
     de: {
-        pluginTitle: "sipScheduler",
-        sipscheduler: "sipScheduler",
-        sipscheduleradmin: "sipScheduler Admin",
+        pluginTitle: "SIP Scheduler",
+        sipscheduler: "SIP Scheduler",
         title: "Name",
         sip: "SIP",
         url: "URL",
@@ -53,7 +51,7 @@ nilstho.sipschedulermanagertexts = {
         editapp: "App bearbeiten",
         scheduler_settings: "Scheduler Einstellungen",
         pbxname: "PBX Name",
-        run_at: "Täglich ausführen um HH:MM (24h Format)",
+        run_at: "Täglich ausführen um HH:MM (UTC, 24h Format)",
         pbxmacaddress: "PBX MAC Adresse",
         enabled: "Scheduler aktivieren",
         domain: "Domäne",

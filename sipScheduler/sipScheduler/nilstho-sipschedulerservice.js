@@ -54,18 +54,14 @@ function parseRunAt(runAt) {
 function msUntilNextRun(runAt) {
     var t = parseRunAt(runAt);
 
-    var offMin = (Config && typeof Config.tz_offset_minutes === "number") ? Config.tz_offset_minutes : 0;
-    var offMs = offMin * 60000;
+    var now = new Date();
+    var next = new Date(now.getTime());
+    next.setUTCHours(t.h, t.m, 0, 0);
+    if (next.getTime() <= now.getTime()) next.setUTCDate(next.getUTCDate() + 1);
 
-    var nowHost = new Date();
-    var nowTz = new Date(nowHost.getTime() + offMs);
-
-    var nextTz = new Date(nowTz);
-    nextTz.setHours(t.h, t.m, 0, 0);
-    if (nextTz <= nowTz) nextTz.setDate(nextTz.getDate() + 1);
-
-    return nextTz.getTime() - nowTz.getTime();
+    return next.getTime() - now.getTime();
 }
+
 // Format timestamp as "YYYY-MM-DD HH:MM:SS UTC"
 function fmtTs(ts) {
     var d = new Date(ts);
@@ -281,8 +277,8 @@ function scheduleNextRun() {
         return;
     }
     var delay = msUntilNextRun(Config.run_at);
-    log("[TIME] now=" + fmtTs((new Date()).getTime()) +
-        " run_at=" + String(Config.run_at));
+    log("[TIME] now_utc=" + fmtTs(Date.now()) + " run_at_utc=" + String(Config.run_at));
+
 
     log("[SCHED] next job at " + fmtTs((new Date()).getTime() + delay) +
         " (in " + Math.round(delay / 1000) + "s)");

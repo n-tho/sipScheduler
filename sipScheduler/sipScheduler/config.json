@@ -4,6 +4,11 @@
             "nilstho-sipschedulerservice.js"
         ]
     },
+    "apis": {
+        "nilstho-sipscheduler": {
+            "hidden": true
+        }
+    },
     "database": {
         "init": [{
             "cmd": "table",
@@ -81,12 +86,6 @@
                 "name": "sip_mask",
                 "type": "INT",
                 "default": 1
-            },
-            {
-                "cmd": "item",
-                "name": "tz_offset_minutes",
-                "type": "INT",
-                "default": 60
             },
             {
                 "cmd": "item",
