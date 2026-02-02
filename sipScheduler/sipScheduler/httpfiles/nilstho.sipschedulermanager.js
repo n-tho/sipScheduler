@@ -129,13 +129,45 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     function isEmpty(s) { return trimStr(s) === ""; }
     function isValidTime(s) { return /^\d{2}:\d{2}$/.test(trimStr(s)); }
 
+    // Converts a time string "HH:MM" into minutes since midnight (0–1439).
+    function hhmmToMinutes(hhmm) {
+        var m = /^(\d{2}):(\d{2})$/.exec(String(hhmm || ""));
+        if (!m) return null;
+        return (parseInt(m[1], 10) * 60) + parseInt(m[2], 10);
+    }
+
+    // Converts minutes since midnight back into a normalized "HH:MM" time string.
+    function minutesToHHMM(mins) {
+        mins = ((mins % 1440) + 1440) % 1440;
+        var h = Math.floor(mins / 60);
+        var m = mins % 60;
+        return ("0" + h).slice(-2) + ":" + ("0" + m).slice(-2);
+    }
+
+    // Converts a local "HH:MM" time to UTC "HH:MM" using a fixed offset (minutes east of UTC).
+    function localHHMMToUtcHHMM(localHHMM, offsetEastMinutes) {
+        var local = hhmmToMinutes(localHHMM);
+        if (local === null) return null;
+        return minutesToHHMM(local - (offsetEastMinutes | 0));
+    }
+
+    // Converts a UTC "HH:MM" time to local "HH:MM" using a fixed offset (minutes east of UTC).
+    function utcHHMMToLocalHHMM(utcHHMM, offsetEastMinutes) {
+        var utc = hhmmToMinutes(utcHHMM);
+        if (utc === null) return null;
+        return minutesToHHMM(utc + (offsetEastMinutes | 0));
+    }
+
+    // marks a field as required and sets its error message.
     function markRequiredField(field, isValid, msg) {
         if (field && field.setError) {
             field.setError(!isValid, msg);
         }
-        return !!isValid;
+        return !!isValid; // true if valid
+
     }
 
+    // Validates a set of fields. Returns true if all are valid.
     function validateRequiredField(fields) {
         var allValid = true;
 
@@ -154,7 +186,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         return allValid;
     }
 
-
+    // Converts a string of sip checks to an integer bit mask.
     function maskToChecks(mask) {
         mask = (mask | 0) >>> 0;
         for (var i = 1; i <= 16; i++) {
@@ -164,7 +196,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             }
         }
     }
-
+    // Converts an integer bit mask to a string of sip checks.
     function checksToMask() {
         var mask = 0;
         for (var i = 1; i <= 16; i++) {
@@ -175,6 +207,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         return mask | 0;
     }
 
+    // Normalizes a comma separated list of apps.
     function normalizeApps(s) {
         s = String(s || "").trim();
         if (!s) return "";
@@ -185,6 +218,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             .join(",");
     }
 
+    // UI panel for the Manager Plugin.
     function read() {
         panel.clear();
         //settings
@@ -208,7 +242,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         console.log("sending GetAppObjects", item.httpsUri);
         reloadObjects();
     }
-
+    // Reload the list of apps in the panel
     function reloadObjects() {
         sipSchedulerList && sipSchedulerList.clear();
         copyPwd = null;
@@ -242,11 +276,18 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             appselect.add(new innovaphone.ui1.Div("position:absolute; left:50px; top:5px; height:30px;", null, "nilstho-sipscheduler-label2")).addTranslation(texts, appid);
         }
     }
+    // Read the values stored in the Config and set the values in the UI
     function onConfigLoaded() {
         if (!textValues) return;
 
         if (textValues.pbxname) textValues.pbxname.setValue(configItems.pbxname || "");
-        if (textValues.run_at) textValues.run_at.setValue(configItems.run_at || "00:00");
+        if (textValues.run_at) {
+            var offsetEast = -new Date().getTimezoneOffset();
+            var utcVal = configItems.run_at || "00:00";
+            var localVal = utcHHMMToLocalHHMM(utcVal, offsetEast) || utcVal;
+            textValues.run_at.setValue(localVal);
+        }
+
         if (textValues.pbxmacaddress) textValues.pbxmacaddress.setValue(configItems.pbxmacaddress || "");
         if (textValues.enabled) textValues.enabled.setValue(!!configItems.enabled);
         if (textValues.domain) textValues.domain.setValue(configItems.domain || app.domain || "");
@@ -263,6 +304,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         }
     }
 
+    // Settings Panel
     function onsettings() {
         panel.clear();
         settingsOkBtn = null;
@@ -306,7 +348,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
 
         var run_at = content.add(new ConfigTime("run_at", "", 200)).testId("nilstho-sipscheduler-settings-run_at");
         run_at.input && (run_at.input.container.style.fontFamily = "monospace");
-        run_at.setTooltip("Required. Format HH:MM (UTC)");
+        run_at.setTooltip("Required. Format HH:MM");
         textValues.run_at = run_at;
 
         var re_register = content.add(new ConfigNumber("re_register", "", 200)).testId("nilstho-sipscheduler-settings-re_register");
@@ -320,12 +362,14 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             { field: textValues.run_at, value: function () { return textValues.run_at.getValue(); }, validator: isValidTime, msg: "Required (HH:MM)" }
         ];
 
+        // Validate the settings live
         function validateSettingsLive() {
             var ok = validateRequiredField(settingsValidators);
             setButtonDisabled(settingsOkBtn, !ok);
             return ok;
         }
 
+        // Wire up the live validation
         function wireLive(fieldObj) {
             if (!fieldObj) return;
             if (fieldObj.input && fieldObj.input.container) {
@@ -359,10 +403,10 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         }
 
         configItems.init(instance);
-        setButtonDisabled(okBtn, true);
+        setButtonDisabled(settingsOkBtn, true);
 
     }
-
+    // Save settings
     function onSaveSettings() {
         // Required fields
         var valid = validateRequiredField([
@@ -376,6 +420,9 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             console.warn("Settings validation failed");
             return;
         }
+        var localRunAt = trimStr(textValues.run_at.getValue());
+        var offsetEast = -new Date().getTimezoneOffset();
+        var utcRunAt = localHHMMToUtcHHMM(localRunAt, offsetEast) || "00:00";
 
         configItems.enabled = textValues.enabled ? textValues.enabled.getValue() : false;
         configItems.pbxmacaddress = textValues.pbxmacaddress.getValue();
@@ -384,7 +431,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         configItems.run_at = textValues.run_at.getValue();
         configItems.pbxname = trimStr(textValues.pbxname.getValue());
         configItems.domain = trimStr(textValues.domain ? textValues.domain.getValue() : "");
-        configItems.run_at = trimStr(textValues.run_at.getValue());
+        configItems.run_at = utcRunAt;
         configItems.re_register = parseInt(textValues.re_register.getValue()) || 5;
         configItems.sip_mask = checksToMask();
 
@@ -580,6 +627,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             read();
         }
     }
+
     EditsipScheduler.prototype = innovaphone.ui1.nodePrototype;
 
     function setFieldErrorStyle(el, on) {
@@ -595,6 +643,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         }
     }
 
+    // Config fields
     function Text(label, text, width, lwidth) {
         this.createNode("div", "position:relative; display:flex");
         this.add(new innovaphone.ui1.Div(lwidth ? "width:" + lwidth + "px" : null, null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
@@ -624,6 +673,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     }
     ConfigText.prototype = innovaphone.ui1.nodePrototype;
 
+    // Config Text with changed stylesheet, used for the settings panel
     function ConfigText2(label, text, width) {
         this.createNode("div", "position:relative; display:flex; align-items:center; margin-bottom:12px;");
         var label = this.add(new innovaphone.ui1.Div("width:250px; flex-shrink:0;", null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
@@ -635,6 +685,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         this.getValue = function () { return input.getValue(); };
         this.setValue = function (value) { input.setValue(value); };
         this.testId = function (id) { input.testId(id); return this; };
+        // error handler with tooltips
         this.setError = function (on, msg) {
             setFieldErrorStyle(input.container, !!on);
             if (on) { err.container.style.display = "block"; err.container.innerText = msg || "Required"; }
@@ -647,6 +698,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     }
     ConfigText2.prototype = innovaphone.ui1.nodePrototype;
 
+    // UI for the schedule time field
     function ConfigTime(label, text, width) {
         this.createNode("div", "position:relative; display:flex; align-items:center; margin-bottom:12px;");
         var label = this.add(new innovaphone.ui1.Div("width:250px; flex-shrink:0;", null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
@@ -668,6 +720,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
 
     ConfigTime.prototype = innovaphone.ui1.nodePrototype;
 
+    // UI for the re-register time field
     function ConfigNumber(label, text, width) {
         this.createNode("div", "position:relative; display:flex; align-items:center; margin-bottom:12px;");
         var label = this.add(new innovaphone.ui1.Div("width:250px; flex-shrink:0;", null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
@@ -707,14 +760,14 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     }
     ConfigTemplate.prototype = innovaphone.ui1.nodePrototype;
 
+    // UI for the checkboxes
     function ConfigCheckbox(label, value, width) {
         this.createNode("div", "position:relative; display:flex; align-items:center");
 
-        this.add(new innovaphone.ui1.Div(null, null, "nilstho-sipscheduler-label"))
-            .addTranslation(texts, label);
-        var boxDiv = this.add(new innovaphone.ui1.Div("position:relative; " + width + "; display:flex; align-items:center;"));
-        var checkbox = boxDiv.add(new innovaphone.ui1.Checkbox("position:relative; margin: 7px 0px 7px 15px; background-color:var(--nilstho-sipscheduler-green);", !!value, null, "var(--nilstho-sipscheduler-green)", "white", "var(--nilstho-sipscheduler-c1)"));
+        this.add(new innovaphone.ui1.Div("width:70px; flex-shrink:0; text-align:left;", null, "nilstho-sipscheduler-label")).addTranslation(texts, label);
 
+        var boxDiv = this.add(new innovaphone.ui1.Div("position:relative; " + width + "; display:flex; align-items:center;"));
+        var checkbox = boxDiv.add(new innovaphone.ui1.Checkbox("position:relative; margin: 7px 0px 7px 0px; background-color:var(--nilstho-sipscheduler-green);", !!value, null, "var(--nilstho-sipscheduler-green)", "white", "var(--nilstho-sipscheduler-c1)"));
         this.getValue = function () { return !!checkbox.getValue(); };
         this.setValue = function (v) { checkbox.setValue(!!v); };
 
