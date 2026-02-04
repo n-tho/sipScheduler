@@ -94,6 +94,71 @@
                 "default": 5
             },
             {
+                "cmd": "item",
+                "name": "failover_enabled",
+                "type": "BOOL",
+                "default": false
+            },
+            {
+                "cmd": "item",
+                "name": "standby_pbxmacaddress",
+                "type": "STRING"
+            },
+            {
+                "cmd": "item",
+                "name": "failover_delay_ms",
+                "type": "INT",
+                "default": 60000
+            },
+            {
+                "cmd": "item",
+                "name": "failover_poll_ms",
+                "type": "INT",
+                "default": 5000
+            },
+            {
+                "cmd": "item",
+                "name": "failover_confirm_polls",
+                "type": "INT",
+                "default": 2
+            },
+            {
+                "cmd": "item",
+                "name": "failback_delay_ms",
+                "type": "INT",
+                "default": 15000
+            },
+            {
+                "cmd": "item",
+                "name": "failback_confirm_polls",
+                "type": "INT",
+                "default": 2
+            },
+            {
+                "cmd": "item",
+                "name": "failover_master_ip",
+                "type": "STRING",
+                "default": ""
+            },
+            {
+                "cmd": "item",
+                "name": "failover_master_dns",
+                "type": "STRING",
+                "default": ""
+            },
+            {
+                "cmd": "item",
+                "name": "failover_standby_ip",
+                "type": "STRING",
+                "default": ""
+            },
+            {
+                "cmd": "item",
+                "name": "failover_standby_dns",
+                "type": "STRING",
+                "default": ""
+            },
+            {
                 "cmd": "mode",
                 "name": "pbx-manager",
                 "read": true,
