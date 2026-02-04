@@ -659,10 +659,11 @@ var pbxServices = new PbxApi("Services").onconnected(function (conn) {
         + "conn: " + JSON.stringify(conn)
     );
     updateServicesPeerRole(conn);
+    conn._isMaster = isServicesOnMaster;
+    conn._isStandby = isServicesOnStandby;
 
-    // Master up trigger nur, wenn wir am Master sind
     if (failoverActive && isServicesOnMaster) {
-        failoverOnMasterUp();
+        failbackStartPolling();
     }
 
     conn.send(JSON.stringify({ api: "Services", mt: "SubscribeServices" }));
@@ -700,7 +701,8 @@ var pbxServices = new PbxApi("Services").onconnected(function (conn) {
                 log("[SERV] devices already connected/connecting, skip");
                 return;
             }
-
+            log("[SERV] connecting to devices now | devicesConnecting=" + boolStr(devicesConnecting)
+                + " | appsocket_connect=" + boolStr(!!appsocket_connect));
             connectToDevices(transformUrl(devicesServiceUrl), devicesServiceName);
         }
 
@@ -754,15 +756,24 @@ var pbxServices = new PbxApi("Services").onconnected(function (conn) {
     });
 
     conn.onclose(function () {
-        log("[SERV] conn closed"
-            + " | devicesReady=" + boolStr(!!(devicesBaseHttpUrl && sessionKey))
-            + " | failover_enabled=" + boolStr(Config && Config.failover_enabled));
+        log("[SERV] conn closed | wasMaster=" + boolStr(conn._isMaster));
 
-        failoverOnMasterDown();
-        devicesConnecting = false;
-        var idx = serviceconns.indexOf(conn);
-        if (idx >= 0) serviceconns.splice(idx, 1);
+        if (conn._isMaster) {
+            if (Config && Config.failover_enabled) {
+                failoverOnMasterDown();
+            }
+            else if (conn._isMaster) {
+                failoverOnMasterDown();
+            }
+            else {
+                log("[FO] skip: Services closed on non-master connection");
+            }
+        }
+
     });
+    if (failoverActive && isServicesOnMaster) {
+        failbackStartPolling();
+    }
 });
 
 /**
@@ -1034,9 +1045,9 @@ function failbackStartPolling() {
                 var masterHasStandby = regsHasCn(bodyM, cnMaster);
                 var standbyHasActive = regsHasCn(bodyS, cnStandby);
 
-                log("[FB] regs polled"
-                    + " | master_has_" + cnMaster + "=" + boolStr(masterHasStandby)
-                    + " | standby_has_" + cnStandby + "=" + boolStr(standbyHasActive));
+                // log("[FB] regs polled"
+                //     + " | master_has_" + cnMaster + "=" + boolStr(masterHasStandby)
+                //     + " | standby_has_" + cnStandby + "=" + boolStr(standbyHasActive));
 
                 var cond = (masterHasStandby && standbyHasActive);
                 okCount = cond ? (okCount + 1) : 0;
@@ -1087,8 +1098,11 @@ function failoverStartupCheck() {
     if (!Config || !Config.failover_enabled) return;
     if (!devicesBaseHttpUrl || !sessionKey) return;
 
-    // Start failover evaluation once at startup.
-    // If master is really up, polling will not confirm and nothing happens.
+    if (isServicesOnMaster) {
+        log("[FO] startup-check: connected to master -> skip");
+        return;
+    }
+
     log("[FO] startup-check: scheduling master-down evaluation");
     failoverOnMasterDown();
 }
@@ -1158,7 +1172,7 @@ function failoverStartPolling() {
             return;
         }
 
-        log("[FO] poll regs (dual)");
+        //log("[FO] poll regs (dual)");
 
         httpGetText(urlM, function (errM, bodyM) {
             if (!failoverPending) return;
@@ -1182,9 +1196,9 @@ function failoverStartPolling() {
                 }
                 var standbyHasActive = regsHasCn(bodyS, cnStandby);
 
-                log("[FO] regs polled"
-                    + " | master_has_" + cnMaster + "=" + boolStr(masterHasStandby)
-                    + " | standby_has_" + cnStandby + "=" + boolStr(standbyHasActive));
+                // log("[FO] regs polled"
+                //     + " | master_has_" + cnMaster + "=" + boolStr(masterHasStandby)
+                //     + " | standby_has_" + cnStandby + "=" + boolStr(standbyHasActive));
 
                 // Failover condition:
                 // - master missing _STANDBY_ AND standby missing _ACTIVE_
@@ -1276,7 +1290,7 @@ function failbackMaybeStart() {
 function updateServicesPeerRole(connInfo) {
     isServicesOnMaster = false;
     isServicesOnStandby = false;
-
+    if (!Config || !Config.failover_enabled) return;
     if (!connInfo) return;
 
     var ip = String(connInfo.remoteAddr || "").trim();
@@ -1298,7 +1312,16 @@ function updateServicesPeerRole(connInfo) {
         + " | isStandby=" + boolStr(isServicesOnStandby));
 }
 
-
+function refreshServicesPeerRoles() {
+    var i, c;
+    for (i = 0; i < serviceconns.length; i++) {
+        c = serviceconns[i];
+        if (!c) continue;
+        updateServicesPeerRole(c);
+        c._isMaster = isServicesOnMaster;
+        c._isStandby = isServicesOnStandby;
+    }
+}
 // ------------------------------------------------------------
 // Config change handling
 // ------------------------------------------------------------
@@ -1317,8 +1340,11 @@ try {
 
 try {
     Config.onchanged(function () {
-        log("[CFG] changed -> reschedule");
+        log("[CFG] changed -> reschedule | ready=" + boolStr(isReady()));
+        log(JSON.stringify(Config));
+        refreshServicesPeerRoles();
         scheduleNextRun();
+        recoverIfNeeded();
     });
 } catch (e) {
     log("[CFG] Config.onchanged not available or failed: " + e);

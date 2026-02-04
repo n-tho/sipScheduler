@@ -47,13 +47,15 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     var texts, add, sipSchedulerList, templatesList, templatesListCn, instance;
 
     var panel = this.add(new innovaphone.ui1.Div(null, null, "nilstho-sipscheduler-panel"));
-    panel.setAttribute("over")
     var src = new app.Src(pbx);
     var textValues = {};
     var configItems = null;
     var configItemsInitialized = false;
     var settingsOkBtn = null;
     var settingsValidators = null;
+    var failoverValidators = null;
+    var updateFailoverVisibility = null;
+    var failoverSection = null;
 
     var typeTexts = ["SIP Scheduler"];
     var typeText = ["sipscheduler"];
@@ -202,6 +204,7 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             }
         }
     }
+
     // Converts an integer bit mask to a string of sip checks.
     function checksToMask() {
         var mask = 0;
@@ -224,9 +227,12 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             .join(",");
     }
 
+
     // UI panel for the Manager Plugin.
     function read() {
         panel.clear();
+        failoverSection = null;
+        updateFailoverVisibility = null;
         //settings
         var settingsBtn = panel
             .add(new innovaphone.ui1.Div("display:flex; flex-direction:row; margin-top:10px; margin-bottom:20px; position:relative; z-index:2;", null, "nilstho-sipscheduler-obj"))
@@ -301,6 +307,8 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         if (textValues.re_register) textValues.re_register.setValue(configItems.re_register || "");
         // standby
         if (textValues.failover_enabled) textValues.failover_enabled.setValue(!!configItems.failover_enabled);
+        if (typeof updateFailoverVisibility === "function") updateFailoverVisibility();
+
         if (textValues.standby_pbxmacaddress) textValues.standby_pbxmacaddress.setValue(configItems.standby_pbxmacaddress || "");
 
         if (textValues.failover_master_ip) textValues.failover_master_ip.setValue(configItems.failover_master_ip || "");
@@ -337,6 +345,8 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
 
         var header = panel.add(new innovaphone.ui1.Div("position:absolute; box-sizing:border-box; padding:10px; width:100%; color: var(--nilstho-sipscheduler-c2); font-size: 18px;")).addTranslation(texts, "scheduler_settings");
         var content = panel.add(new innovaphone.ui1.Scrolling("position:absolute; width:100%; top:50px; bottom:40px; margin-top: 5px;", -1, -1, 9, "red"));
+        content.container.style.overflowY = "auto";
+        content.container.style.overflowX = "hidden";
         var footer = panel.add(new innovaphone.ui1.Div("position:absolute; width:100%; bottom:0px; height:40px"));
         settingsOkBtn = footer.add(new innovaphone.ui1.Div("right:140px; bottom:10px", null, "nilstho-sipscheduler-button")).addTranslation(texts, "ok").addEvent("click", onSaveSettings).testId("nilstho-sipscheduler-settings-ok");
         footer.add(new innovaphone.ui1.Div("right:10px; bottom:10px", null, "nilstho-sipscheduler-button")).addTranslation(texts, "cancel").addEvent("click", oncancelSettings).testId("nilstho-sipscheduler-settings-cancel");
@@ -361,7 +371,6 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         textValues.domain = domain;
 
         var run_at = content.add(new ConfigTime("run_at", "", 200)).testId("nilstho-sipscheduler-settings-run_at");
-        run_at.input && (run_at.input.container.style.fontFamily = "monospace");
         textValues.run_at = run_at;
 
 
@@ -371,32 +380,36 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         var failover_enabled = content.add(new ConfigCheckbox("failover_enabled", false, "width:140px;", "width:252px")).testId("nilstho-sipscheduler-settings-failover-enabled");
         textValues.failover_enabled = failover_enabled;
 
-        var standby_pbxmacaddress = content.add(new ConfigText2("standby_pbxmacaddress", "", 200)).testId("nilstho-sipscheduler-settings-standby-pbxmacaddress");
+        failoverSection = content.add(new innovaphone.ui1.Div(
+            "margin-top:10px; padding-top:10px; border-top:1px solid var(--nilstho-sipscheduler-highlight-bg);"
+        ));
+
+        var standby_pbxmacaddress = failoverSection.add(new ConfigText2("standby_pbxmacaddress", "", 200)).testId("nilstho-sipscheduler-settings-standby-pbxmacaddress");
         standby_pbxmacaddress.setAttribute("placeholder", "standby mac");
         textValues.standby_pbxmacaddress = standby_pbxmacaddress;
 
-        var failover_master_ip = content.add(new ConfigText2("failover_master_ip", "", 200)).testId("niltho-sipscheduler-settings-failover-master-ip");
+        var failover_master_ip = failoverSection.add(new ConfigText2("failover_master_ip", "", 200)).testId("niltho-sipscheduler-settings-failover-master-ip");
         textValues.failover_master_ip = failover_master_ip;
 
-        var failover_master_dns = content.add(new ConfigText2("failover_master_dns", "", 200)).testId("niltho-sipscheduler-settings-failover-master-dns");
+        var failover_master_dns = failoverSection.add(new ConfigText2("failover_master_dns", "", 200)).testId("niltho-sipscheduler-settings-failover-master-dns");
         textValues.failover_master_dns = failover_master_dns;
 
-        var failover_standby_ip = content.add(new ConfigText2("failover_standby_ip", "", 200)).testId("niltho-sipscheduler-settings-failover-standby-ip");
+        var failover_standby_ip = failoverSection.add(new ConfigText2("failover_standby_ip", "", 200)).testId("niltho-sipscheduler-settings-failover-standby-ip");
         textValues.failover_standby_ip = failover_standby_ip;
 
-        var failover_standby_dns = content.add(new ConfigText2("failover_standby_dns", "", 200)).testId("niltho-sipscheduler-settings-failover-standby-dns");
+        var failover_standby_dns = failoverSection.add(new ConfigText2("failover_standby_dns", "", 200)).testId("niltho-sipscheduler-settings-failover-standby-dns");
         textValues.failover_standby_dns = failover_standby_dns;
 
-        var foDelay = content.add(new ConfigNumberMs("failover_delay_ms", "", 200)).testId("nilstho-sipscheduler-settings-failover-delay");
+        var foDelay = failoverSection.add(new ConfigNumberMs("failover_delay_ms", "", 200)).testId("nilstho-sipscheduler-settings-failover-delay");
         textValues.failover_delay_ms = foDelay;
 
-        var foPoll = content.add(new ConfigNumberMs("failover_poll_ms", "", 200)).testId("nilstho-sipscheduler-settings-failover-poll");
+        var foPoll = failoverSection.add(new ConfigNumberMs("failover_poll_ms", "", 200)).testId("nilstho-sipscheduler-settings-failover-poll");
         textValues.failover_poll_ms = foPoll;
 
-        var foConf = content.add(new ConfigNumberSmall("failover_confirm_polls", "", 200)).testId("nilstho-sipscheduler-settings-failover-confirm");
+        var foConf = failoverSection.add(new ConfigNumberSmall("failover_confirm_polls", "", 200)).testId("nilstho-sipscheduler-settings-failover-confirm");
         textValues.failover_confirm_polls = foConf;
 
-        var fbConf = content.add(new ConfigNumberSmall("failback_confirm_polls", "", 200)).testId("nilstho-sipscheduler-settings-failback-confirm");
+        var fbConf = failoverSection.add(new ConfigNumberSmall("failback_confirm_polls", "", 200)).testId("nilstho-sipscheduler-settings-failback-confirm");
         textValues.failback_confirm_polls = fbConf;
 
         //tooltips
@@ -414,7 +427,10 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         addTooltipTranslation(foConf, "failover_confirm_polls_tooltip");
         addTooltipTranslation(fbConf, "failback_confirm_polls_tooltip");
 
-
+        function isNumber(s) {
+            s = trimStr(s);
+            return s !== "" && !isNaN(parseInt(s, 10));
+        }
 
         // Validation list for live disabling + marking
         settingsValidators = [
@@ -423,13 +439,34 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             { field: textValues.domain, value: function () { return textValues.domain.getValue(); }, msg: "Required" },
             { field: textValues.run_at, value: function () { return textValues.run_at.getValue(); }, validator: isValidTime, msg: "Required (HH:MM)" }
         ];
+        failoverValidators = [
 
-        // Validate the settings live
+            { field: textValues.failover_poll_ms, value: function () { return textValues.failover_poll_ms.getValue(); }, validator: isNumber, msg: "Required" },
+            { field: textValues.failover_delay_ms, value: function () { return textValues.failover_delay_ms.getValue(); }, validator: isNumber, msg: "Required" },
+            { field: textValues.failover_master_ip, value: function () { return textValues.failover_master_ip.getValue(); }, msg: "Required" },
+            { field: textValues.failover_standby_ip, value: function () { return textValues.failover_standby_ip.getValue(); }, msg: "Required" },
+            { field: textValues.standby_pbxmacaddress, value: function () { return textValues.standby_pbxmacaddress.getValue(); }, msg: "Required" }
+
+        ];
+        // Validate the settings live and check failover if enabled
         function validateSettingsLive() {
             var ok = validateRequiredField(settingsValidators);
+
+            var foOn = textValues.failover_enabled && textValues.failover_enabled.getValue();
+            if (foOn) {
+                ok = validateRequiredField(failoverValidators) && ok;
+            } else {
+
+                for (var i = 0; i < failoverValidators.length; i++) {
+                    var f = failoverValidators[i].field;
+                    if (f && f.setError) f.setError(false);
+                }
+            }
+
             setButtonDisabled(settingsOkBtn, !ok);
             return ok;
         }
+
 
         // Wire up the live validation
         function wireLive(fieldObj) {
@@ -450,11 +487,17 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
         wireLive(textValues.pbxname);
         wireLive(textValues.domain);
         wireLive(textValues.run_at);
+        wireLive(textValues.standby_pbxmacaddress);
+        wireLive(textValues.failover_master_ip);
+        wireLive(textValues.failover_master_dns);
+        wireLive(textValues.failover_standby_ip);
+        wireLive(textValues.failover_standby_dns);
+        wireLive(textValues.failover_delay_ms);
+        wireLive(textValues.failover_poll_ms);
+        wireLive(textValues.failover_confirm_polls);
+        wireLive(textValues.failback_confirm_polls);
 
-
-        var grid = content.add(new innovaphone.ui1.Div(
-            "display:grid; grid-template-columns: 1fr 1fr; gap:6px 20px; margin-bottom:12px;"
-        ));
+        var grid = content.add(new innovaphone.ui1.Div("display:grid; grid-template-columns: 1fr 1fr; gap:6px 20px; margin-bottom:12px;"));
 
         textValues.sipChecks = [];
         for (var i = 1; i <= 16; i++) {
@@ -464,10 +507,25 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             textValues.sipChecks[i] = cb;
         }
 
+
+        // Updates the visibility if the failover checkbox is enabled.
+        updateFailoverVisibility = function () {
+            if (!failoverSection || !failoverSection.container) return;
+
+            var on = textValues.failover_enabled && textValues.failover_enabled.getValue();
+            failoverSection.container.style.display = on ? "" : "none";
+        };
+
+        failover_enabled.setOnChange(function () {
+            updateFailoverVisibility();
+            validateSettingsLive();
+        });
+
         configItems.init(instance);
         setButtonDisabled(settingsOkBtn, true);
-
+        updateFailoverVisibility();
     }
+
     // Save settings
     function onSaveSettings() {
         // Required fields
@@ -478,6 +536,10 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
             { field: textValues.run_at, value: function () { return textValues.run_at.getValue(); }, validator: isValidTime }
         ]);
 
+        var failoverOn = textValues.failover_enabled && textValues.failover_enabled.getValue();
+        if (failoverOn) {
+            valid = validateRequiredField(failoverValidators) && valid;
+        }
         if (!valid) {
             console.warn("Settings validation failed");
             return;
@@ -838,23 +900,17 @@ plugin.nilstho.sipschedulermanager = plugin.nilstho.sipschedulermanager || funct
     // UI for the checkboxes
     function ConfigCheckbox(labelKey, value, width, lblwidth) {
         this.createNode("div", "position:relative; display:flex; align-items:center");
-
+        var isSip = /^SIP\d+$/.test(labelKey);
         // label
-        var labelDiv = this.add(new innovaphone.ui1.Div("flex-shrink:0; text-align:left;" + (lblwidth || "70px") + ";", null, "nilstho-sipscheduler-label")).addTranslation(texts, labelKey);
+        var labelStyle = "flex-shrink:0; text-align:left;" + (lblwidth ? " width:" + lblwidth + ";" : " width:70px;") + (isSip ? "" : "");
+        var labelDiv = this.add(new innovaphone.ui1.Div(labelStyle, null, "nilstho-sipscheduler-label")).addTranslation(texts, labelKey);
 
         // checkbox container
         var boxDiv = this.add(new innovaphone.ui1.Div(
             "position:relative; " + (width || "width:140px;") + " display:flex; align-items:center;"
         ));
 
-        var checkbox = boxDiv.add(new innovaphone.ui1.Checkbox(
-            "position:relative; margin: 7px 0px 7px 0px; background-color:var(--nilstho-sipscheduler-green);",
-            !!value,
-            null,
-            "var(--nilstho-sipscheduler-green)",
-            "white",
-            "var(--nilstho-sipscheduler-c1)"
-        ));
+        var checkbox = boxDiv.add(new innovaphone.ui1.Checkbox("position:relative; margin: 7px 0px 7px 0px; background-color:var(--nilstho-sipscheduler-green);", !!value, null, "var(--nilstho-sipscheduler-green)", "white", "var(--nilstho-sipscheduler-c1)"));
 
         this.getValue = function () { return !!checkbox.getValue(); };
         this.setValue = function (v) { checkbox.setValue(!!v); };
